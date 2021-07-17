@@ -18,13 +18,14 @@ namespace Stardew_Valley_Translation_Tool {
 
         string title = "Stardew Valley Translation Tool";
         string version = "v0.1";
-        string lineCountLabel = "Line count: ";
-        string fileNameLabel = "Filename: ";
-        string keyCountLabel = "Key count: ";
-        string validLineCountLabel = "Valid Dialogs: ";
-        string jsonLabel = "Json: ";
+        string lineCountLabelPrefix = "Line count: ";
+        string fileNameLabelPrefix = "Filename: ";
+        string keyCountLabelPrefix = "Key count: ";
+        string validLineCountLabelPrefix = "Valid Dialogs: ";
+        string jsonLabelPrefix = "Json: ";
         string keyPattern = "^\".*\": \"";                // Matches: "keyString": "
         string validDialogPattern = "^\".*\": \".*\",$";  // Matches: "keyString": "contentString",
+        string fileChangedToken = @"~FILE CHANGE~";
 
         private List<string> originalLines;
         private List<string> translatedLines;
@@ -34,7 +35,6 @@ namespace Stardew_Valley_Translation_Tool {
         private Color defaultTextColor;
         private Color selectionTextColor = Color.Aquamarine;
         private Color selectionBackgroundColor = Color.SteelBlue;
-        //private int[] lazyWorkaround = new int[4];
 
         private bool IsOkToLooseChanges {
             get {
@@ -44,72 +44,186 @@ namespace Stardew_Valley_Translation_Tool {
             }
         }
 
-        private void OpenFile(OpenFileDialog openDialog, RichTextBoxSynchronizedScroll richTextBox, ref List<string> list, Label lineCountLabel, Label fileNameLabel, Label keyCountLabel, Label jsonLabel) {
-            
-            if (richTextBox == RV_RichTextBox && R_Save.Enabled && !IsOkToLooseChanges) return; // Warn about unsaved changes
+        /// <returns>A string containing the paths of the selected file</returns>
+        private string OpenSingleFileDialog(OpenFileDialog openDialog) {//, RichTextBoxSynchronizedScroll richTextBox, ref List<string> list, Label lineCountLabel, Label fileNameLabel, Label keyCountLabel, Label jsonLabel) {
+            openDialog.Filter = "Text Documents (*.txt)|*.txt|All Files (*.*)|*.*";
 
             if (openDialog.ShowDialog() == DialogResult.OK) {
                 try {
-                    ResetRichTextBoxes(richTextBox, true);
-
-                    richTextBox.Text = File.ReadAllText(openDialog.FileName); // Load entire text to referenced vertical box
-                    list = File.ReadAllLines(openDialog.FileName).ToList<string>();
-
-                    if (originalLines.Count > 0) LH_RichTextBox.Text = originalLines[0];     // Load first line in both horizontal boxes
-                    if (translatedLines.Count > 0) RH_RichTextBox.Text = translatedLines[0];
-                    LinePosition.Value = 0;
-                    TotalLines.Text = "of " + list.Count;
-
-                    lineCountLabel.Text = this.lineCountLabel + list.Count;
-                    fileNameLabel.Text = this.fileNameLabel + openDialog.SafeFileName;
-                    
-                    if (IsValidJson(richTextBox.Text)) {
-                        jsonLabel.Text = this.jsonLabel + "OK";
-                    } else {
-                        jsonLabel.Text = this.jsonLabel + "ERROR";
-                    }
-
-                    int keyCount = 0;
-                    int noKeyCount = 0;
-                    int validLineCount = 0;
-                    Match m;
-                    foreach (var line in list) {
-                        m = Regex.Match(line, keyPattern);
-                        if (m.Success) {
-                            keyCount++;
-                            m = Regex.Match(line, validDialogPattern);
-                            if (m.Success) validLineCount++;
-                        } else {
-                            noKeyCount++;
-                        }
-                    }
-                    //keyCountLabel.Text = this.keyCountLabel + keyCount + "   " + this.noKeyCountLabel + noKeyCount + "   " + this.validLineCountLabel + validLineCount;
-                    keyCountLabel.Text = this.keyCountLabel + keyCount + "   " + this.validLineCountLabel + validLineCount;
-
-                    if (LV_RichTextBox.Text != string.Empty && RV_RichTextBox.Text != string.Empty) {
-                        SetSelectionLineColors(LV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true); // Deselect old lines
-                        SetSelectionLineColors(RV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true);
-                        SetSelectionLineColors(LV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor); // Select new lines
-                        SetSelectionLineColors(RV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor);
-                        NextLine.Enabled = LV_RichTextBox.Text != string.Empty;   // Make sure the buttons are only enabled if both text are loaded
-                        PrevLine.Enabled = RV_RichTextBox.Text != string.Empty;
-                    }
-                    HighlightKeywordsInAllBoxes(true);  // Skip vertical boxes
-                    R_Save.Enabled = false;     // Loading a new document doesn't count as a change
+                    return openDialog.FileName;
                 }
                 catch (SecurityException ex) {
                     MessageBox.Show($"Security error.\n\nError message: {ex.Message}\n\n" +
                     $"Details:\n\n{ex.StackTrace}");
                 }
             }
+            return null;
+        }
+
+        /// <returns>A string array containing the paths of the selected files</returns>
+        private string[] OpenMultipleFilesDialog(OpenFileDialog openMultipleDialog) {       // Allow user to select and open multiple files
+            openMultipleDialog.Multiselect = true;
+            openMultipleDialog.Filter = "Text Documents (*.txt)|*.txt|All Files (*.*)|*.*";
+
+            if (J_OpenFileDialog.ShowDialog() == DialogResult.OK) {
+                try {
+                    return openMultipleDialog.FileNames;
+                }
+                catch (SecurityException ex) {
+                    MessageBox.Show($"Security error.\n\nError message: {ex.Message}\n\n" +
+                    $"Details:\n\n{ex.StackTrace}");
+                }
+            }
+            return null;
+        }
+
+        /// <returns>A string containing the text loaded from the files</returns>    // TODO: Clean up and refactor LoadTextFromMultipleFilePaths & LoadTextFromFilePath
+        private string LoadTextFromMultipleFilePaths(string[] filePaths, RichTextBoxSynchronizedScroll richTextBox, ref List<string> list, Label lineCountLabel, Label fileNameLabel, Label keyCountLabel, Label jsonLabel) {
+            if (filePaths == null) return null;     // If its null the user clicked cancel, return
+
+            string loadedText = "";
+
+            if (richTextBox == RV_RichTextBox && R_Save.Enabled && !IsOkToLooseChanges) return null; // Warn about unsaved changes
+
+            ResetRichTextBoxes(richTextBox, true);
+
+            for (int i = 0; i < filePaths.Length; i++) {
+                if (i + 1 != filePaths.Length)
+                Debug.WriteLine("i: " + i + "   filePaths.Length: " + filePaths.Length);
+                loadedText += File.ReadAllText(filePaths[i]) + (i + 1 != filePaths.Length ? fileChangedToken:"");    // Load entire text from the file and insert a file change token
+            }
+
+            richTextBox.Text = loadedText;              // Write the loaded text in the richTextBox           
+            
+            list = richTextBox.Lines.ToList();          // Load all lines from the file in a string list         
+
+            if (originalLines.Count > 0) LH_RichTextBox.Text = originalLines[0];     // Load first line in both horizontal boxes
+            if (translatedLines.Count > 0) RH_RichTextBox.Text = translatedLines[0];
+            LinePosition.Value = 0;
+            TotalLines.Text = "of " + list.Count;
+
+            lineCountLabel.Text = lineCountLabelPrefix + list.Count;
+
+            fileNameLabel.Text = fileNameLabelPrefix + "New file";
+
+            if (IsValidJson(loadedText)) {
+                jsonLabel.Text = jsonLabelPrefix + "OK";
+            } else {
+                jsonLabel.Text = jsonLabelPrefix + "ERROR";
+            }
+
+            int keyCount = 0;
+            int noKeyCount = 0;
+            int validLineCount = 0;
+            Match m;
+            foreach (var line in list) {
+                m = Regex.Match(line, keyPattern);
+                if (m.Success) {
+                    keyCount++;
+                    m = Regex.Match(line, validDialogPattern);
+                    if (m.Success) validLineCount++;
+                } else {
+                    noKeyCount++;
+                }
+            }
+
+            keyCountLabel.Text = keyCountLabelPrefix + keyCount + "   " + validLineCountLabelPrefix + validLineCount;
+
+            if (LV_RichTextBox.Text != string.Empty && RV_RichTextBox.Text != string.Empty) {
+                SetSelectionLineColors(LV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true); // Deselect old lines
+                SetSelectionLineColors(RV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true);
+                SetSelectionLineColors(LV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor); // Select new lines
+                SetSelectionLineColors(RV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor);
+                NextLine.Enabled = LV_RichTextBox.Text != string.Empty;   // Make sure the buttons are only enabled if both text are loaded
+                PrevLine.Enabled = RV_RichTextBox.Text != string.Empty;
+            }
+            HighlightKeywordsInAllBoxes(true);  // Skip vertical boxes
+            //R_Save.Enabled = false;     // Loading a new document doesn't count as a change // In multiple, yes it does
+            return loadedText;
+        }
+
+        /// <returns>A string containing the text loaded from the file</returns>    // TODO: Needs cleanup
+        private string LoadTextFromFilePath(string filePath, RichTextBoxSynchronizedScroll richTextBox, ref List<string> list, Label lineCountLabel, Label fileNameLabel, Label keyCountLabel, Label jsonLabel) {
+            if (string.IsNullOrWhiteSpace(filePath)) return null;   // If its null the user clicked cancel, return
+
+            string loadedText;
+
+            if (richTextBox == RV_RichTextBox && R_Save.Enabled && !IsOkToLooseChanges) return null; // Warn about unsaved changes
+
+            ResetRichTextBoxes(richTextBox, true);
+
+            loadedText = File.ReadAllText(filePath);                // Load entire text from the file
+
+            richTextBox.Text = loadedText;                          // Write the loaded text in the richTextBox           
+
+            //TODO: See if we can use richTextBox.Lines instead
+            list = File.ReadAllLines(filePath).ToList();            // Load all lines from the file in a string list
+           
+
+            if (originalLines.Count > 0) LH_RichTextBox.Text = originalLines[0];     // Load first line in both horizontal boxes
+            if (translatedLines.Count > 0) RH_RichTextBox.Text = translatedLines[0];
+            LinePosition.Value = 0;
+            TotalLines.Text = "of " + list.Count;
+
+            lineCountLabel.Text = lineCountLabelPrefix + list.Count;
+
+            fileNameLabel.Text = fileNameLabelPrefix + Path.GetFileName(filePath); //openDialog.SafeFileName;
+
+            if (IsValidJson(loadedText)) {
+                jsonLabel.Text = jsonLabelPrefix + "OK";
+            } else {
+                jsonLabel.Text = jsonLabelPrefix + "ERROR";
+            }
+
+            int keyCount = 0;
+            int noKeyCount = 0;
+            int validLineCount = 0;
+            Match m;
+            foreach (var line in list) {
+                m = Regex.Match(line, keyPattern);
+                if (m.Success) {
+                    keyCount++;
+                    m = Regex.Match(line, validDialogPattern);
+                    if (m.Success) validLineCount++;
+                } else {
+                    noKeyCount++;
+                }
+            }
+
+            keyCountLabel.Text = keyCountLabelPrefix + keyCount + "   " + validLineCountLabelPrefix + validLineCount;
+
+            if (LV_RichTextBox.Text != string.Empty && RV_RichTextBox.Text != string.Empty) {
+                SetSelectionLineColors(LV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true); // Deselect old lines
+                SetSelectionLineColors(RV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true);
+                SetSelectionLineColors(LV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor); // Select new lines
+                SetSelectionLineColors(RV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor);
+                if (IsOkToWorkOnFiles()) {  // Only enable if both box have the same number of lines
+                    NextLine.Enabled = LV_RichTextBox.Text != string.Empty;   // Make sure the buttons are only enabled if both text are loaded
+                    PrevLine.Enabled = RV_RichTextBox.Text != string.Empty;
+                }
+            }
+            HighlightKeywordsInAllBoxes(true);  // Skip vertical boxes
+            R_Save.Enabled = false;     // Loading a new document doesn't count as a change
+            return loadedText;
+        }
+
+        private bool IsOkToWorkOnFiles() {
+            if (originalLines.Count == translatedLines.Count && originalLines.Count > 0) {
+                return true;
+            }
+            return false;
         }
 
         private void SaveFile(SaveFileDialog saveDialog, RichTextBoxSynchronizedScroll richTextBox) {
+            saveDialog.Filter = "Text Documents (*.txt)|*.txt|All Files (*.*)|*.*";
+            saveDialog.DefaultExt = "txt";
             if (saveDialog.ShowDialog() == DialogResult.OK) //Check if it's all ok  
             {
-                string filename = saveDialog.FileName + ".txt"; //Just to make sure the extension is .txt  
-                File.WriteAllText(filename, richTextBox.Text); //Writes the text to the file and saves it               
-                this.Text = title;
+                string filename = saveDialog.FileName;
+                File.WriteAllText(filename, richTextBox.Text); //Writes to the file
+                //this.Text = title;
+                R_FileName.Text = fileNameLabelPrefix + filename;
+                R_Save.Enabled = false;
             }
         }
 
@@ -154,16 +268,14 @@ namespace Stardew_Valley_Translation_Tool {
             }
             
             ResetRichTextBox(LH_RichTextBox);
-            ResetRichTextBox(RH_RichTextBox);
             LH_RichTextBox.Text = originalLines[(int)LinePosition.Value];   // Load text in horizontal boxes
-            RH_RichTextBox.Text = translatedLines[(int)LinePosition.Value];
-            
-            // Deselect old lines
-            SetSelectionLineColors(LV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true);
-            SetSelectionLineColors(RV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true);
-            // Select new lines
-            SetSelectionLineColors(LV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor, skipAutoScroll);
-            SetSelectionLineColors(RV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor, skipAutoScroll);
+            SetSelectionLineColors(LV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true);   // Deselect old lines
+            SetSelectionLineColors(LV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor, skipAutoScroll);  // Select new lines
+
+            ResetRichTextBox(RH_RichTextBox);
+            RH_RichTextBox.Text = translatedLines[(int)LinePosition.Value]; // Load text in horizontal boxes
+            SetSelectionLineColors(RV_RichTextBox, previousLinePosition, defaultTextColor, defaultBackgroundColor, true);   // Deselect old lines
+            SetSelectionLineColors(RV_RichTextBox, (int)LinePosition.Value, selectionTextColor, selectionBackgroundColor, skipAutoScroll);  // Select new lines
 
             HighlightKeywordsInAllBoxes(true);  // Highlight tokens in horizontal boxes only
         }
@@ -218,9 +330,9 @@ namespace Stardew_Valley_Translation_Tool {
             SearchKeywordAndSetColors(richTextBox, @"(?<!^)[\s]{2,}(?!$)", Color.Red, Color.White);     //Consecutive white space not at the begining or end of a line
             SearchKeywordAndSetColors(richTextBox, @"^\s*", Color.Red, Color.White);                    //Leading white spaces  // TODO: Find why we can't match the start of line char ^
             SearchKeywordAndSetColors(richTextBox, @"\s*$", Color.Red, Color.White);                    //Trailling white spaces
-
+            
             // Custom Token
-            SearchKeywordAndSetColors(richTextBox, @"~ChunkNorisToken~", Color.Purple, Color.White);    //Chunk change token
+            SearchKeywordAndSetColors(richTextBox, fileChangedToken, Color.Purple, Color.White);    //Chunk change token
 
             // Key     // Sample: "event-75160123.23":     // ^\".*\": \"      // ^".*": "
             SearchKeywordAndSetColors(richTextBox, @""".*"": ", Color.Yellow);  // TODO: Find why we can't match the start of line char ^
@@ -261,54 +373,20 @@ namespace Stardew_Valley_Translation_Tool {
             foreach (Match match in Regex.Matches(rtb.Text, keyWord)) {
                 SetRangeColors(rtb, match.Index, match.Length, backColor, textColor);
             }
-            //string textToSearch;
-            ////int positionOffset = 0;
-            //if (lineIndex.HasValue) {
-            //    //return;
-            //    //textToSearch = rtb.Lines[(int)lineIndex];
-            //    //positionOffset = GetStartPosOfLineIndex(); // TODO: Compute or get the textpos at the start of the line at lineIndex
-            //    //lineIndex = rtb.            Lines[(int)lineIndex].
-
-            //    //foreach (Match match in Regex.Matches(rtb.Lines[(int)lineIndex], keyWord)) {
-            //    //    HighlightSelectionRange(rtb, match.Index, match.Length, backColor, textColor);
-            //    //}
-            //    // TODO: This may not work. match.index and match.length may not be the same in a line's context
-            //} else {
-            //    textToSearch = rtb.Text;
-            //    //foreach (Match match in Regex.Matches(rtb.Text, keyWord)) {
-            //    //    HighlightSelectionRange(rtb, match.Index, match.Length, backColor, textColor);
-            //    //}
-            //}
-
-            //foreach (Match match in Regex.Matches(textToSearch, keyWord)) { // Search text for keyWord and set its colors
-            //    SetRangeColors(rtb, match.Index + positionOffset, match.Length, backColor, textColor, lineIndex);
-            //}
-        }
+         }
 
         private void SetRangeColors(RichTextBoxSynchronizedScroll rtb, int startIndex, int length, Color backgroundColor, Color? textColor = null) {
-            //if (rtb == LV_RichTextBox || rtb == RV_RichTextBox) {
-            //    Debug.WriteLine(rtb.Name + " " + startIndex.ToString() + "   " + length.ToString() + "   lineIndex: " + (textPosition ?? -1));
-            //}
             rtb.SelectionStart = startIndex;
             rtb.SelectionLength = length;
             rtb.SelectionBackColor = backgroundColor;
             if (textColor.HasValue) rtb.SelectionColor = textColor.Value;
         }
 
-        private void ContextClicked(RichTextBoxSynchronizedScroll rtb, Point clickPos) {
-            int clickedIndex = rtb.GetLineFromCharIndex(rtb.GetCharIndexFromPosition(rtb.PointToClient(clickPos)));
-            ChangeSelectedLine(LineChangeTypes.NUM, clickedIndex, true);
-        }
-
-        // ListAllFilesInDirectory(Path.GetDirectoryName(openDialog.FileName), "*.txt");
-        private string[] ListAllFilesInDirectory(string path, string searchPatern) {
-            // searchPatern = "*ProfileHandler.cs"
-            Debug.WriteLine("ListAllFilesInDirectory()");
-            foreach (var fileName in Directory.GetFiles(path, searchPatern, SearchOption.TopDirectoryOnly)) {
-                Debug.WriteLine(fileName);
+        private void ContextClicked(RichTextBoxSynchronizedScroll rtb, Point clickPos) {    // TODO: Not ideal to check this EVERY time
+            if (IsOkToWorkOnFiles()) {  // Only enable if both box have the same number of lines
+                int clickedIndex = rtb.GetLineFromCharIndex(rtb.GetCharIndexFromPosition(rtb.PointToClient(clickPos)));
+                ChangeSelectedLine(LineChangeTypes.NUM, clickedIndex, true);
             }
-            //Debug.WriteLine(Directory.GetFiles(path, searchPatern, SearchOption.TopDirectoryOnly));
-            return Directory.GetFiles(path, searchPatern, SearchOption.TopDirectoryOnly);
         }
 
         //private static bool IsValidJson(string jsonString) {  // Uses System.Json
@@ -356,14 +434,13 @@ namespace Stardew_Valley_Translation_Tool {
         // ################################################ EVENTS ################################################
         // ########################################################################################################
 
-        // FIXME: Changes are lost when scrolling back over them (using next/prev) we need to propagate them to the list not just the text box
         // TODO: Verify if we want to use the richTextBox.lines array instead of storing copies in the originalLines and translatedLines lists
-        // TODO: Add button to delete active line on one or both sides (are we shure we want to get in the localization editor range?)
+        // TODO: Add button to delete active line on one or both sides
         // TODO: Add button to add a line on one or both sides (make both original writtable when adding a new line)
         // TODO: Take into account command parameters when highlighting
         // TODO: Clean up and refactor code
-        // TODO: Reorder code properly
         // TODO: Find better names for buttons, controls, events, methods and variables
+        // TODO: Reorder code properly
 
         public Form1() {
             InitializeComponent();
@@ -383,13 +460,7 @@ namespace Stardew_Valley_Translation_Tool {
             defaultTextColor = LV_RichTextBox.ForeColor;        // Save default colors
             defaultBackgroundColor = LV_RichTextBox.BackColor;
         }
-
-        private void L_Open_Click(object sender, EventArgs e) => OpenFile(L_OpenFileDialog, LV_RichTextBox, ref originalLines, L_LineCount, L_FileName, L_KeyCount, L_Json);
-        private void R_Open_Click(object sender, EventArgs e) => OpenFile(R_OpenFileDialog, RV_RichTextBox, ref translatedLines, R_LineCount, R_FileName, R_KeyCount, R_Json);
-        private void R_Save_Click(object sender, EventArgs e) => SaveFile(R_SaveFileDialog, RV_RichTextBox);
-        private void Next_Click(object sender, EventArgs e) => ChangeSelectedLine(LineChangeTypes.FWD);
-        private void Prev_Click(object sender, EventArgs e) => ChangeSelectedLine(LineChangeTypes.BWD);
-
+        
         private void Font_Click(object sender, EventArgs e) {   // Open font dialog and set font in all boxes
             L_FontDialog.Font = LV_RichTextBox.Font;
             if (L_FontDialog.ShowDialog() == DialogResult.OK) {
@@ -397,13 +468,12 @@ namespace Stardew_Valley_Translation_Tool {
                 RV_RichTextBox.Font = L_FontDialog.Font;
                 RH_RichTextBox.Font = L_FontDialog.Font;
                 LH_RichTextBox.Font = L_FontDialog.Font;
-                //HighlightKeywordsInAllBoxes();
             }
         }
 
         private void HighlightContext_Click(object sender, EventArgs e) {
             if ((originalLines.Count + translatedLines.Count) > 5000) {
-                DialogResult dialogResult = MessageBox.Show("That's over 5k lines! Proceed anyway?", title, MessageBoxButtons.OKCancel);
+                DialogResult dialogResult = MessageBox.Show("Processing " + (originalLines.Count + translatedLines.Count) + " lines will take a while. Are you sure?", title, MessageBoxButtons.OKCancel);
                 if (dialogResult == DialogResult.Cancel) return;
             }
             HighlightKeywordsInAllBoxes();
@@ -429,17 +499,20 @@ namespace Stardew_Valley_Translation_Tool {
             ignoreChanges = false;  
         }
 
-        //private void RV_RichTextBox_TextChanged(object sender, EventArgs e) {
-        //    R_Save.Enabled = true;
-        //    // TODO: Either disable changes in vertical box OR apply it!
-        //}
-
-        private void LinePosition_ValueChanged(object sender, EventArgs e) {
-            if (LinePosition.Focused) ChangeSelectedLine(LineChangeTypes.NUM, (int)LinePosition.Value); // Make sure this only runs for user input
-        }
-
+        private void L_Open_Click(object sender, EventArgs e) => LoadTextFromFilePath(OpenSingleFileDialog(L_OpenFileDialog), LV_RichTextBox, ref originalLines, L_LineCount, L_FileName, L_KeyCount, L_Json);
+        private void R_Open_Click(object sender, EventArgs e) => LoadTextFromFilePath(OpenSingleFileDialog(R_OpenFileDialog), RV_RichTextBox, ref translatedLines, R_LineCount, R_FileName, R_KeyCount, R_Json);
+        private void R_Save_Click(object sender, EventArgs e) => SaveFile(R_SaveFileDialog, RV_RichTextBox);
+        private void Next_Click(object sender, EventArgs e) => ChangeSelectedLine(LineChangeTypes.FWD);
+        private void Prev_Click(object sender, EventArgs e) => ChangeSelectedLine(LineChangeTypes.BWD);
+        private void LinePosition_ValueChanged(object sender, EventArgs e) { if (LinePosition.Focused) ChangeSelectedLine(LineChangeTypes.NUM, (int)LinePosition.Value); } // React to manual change only
         private void LV_RichTextBox_Click(object sender, EventArgs e) => ContextClicked(LV_RichTextBox, new Point(MousePosition.X, MousePosition.Y));
-
         private void RV_RichTextBox_Click(object sender, EventArgs e) => ContextClicked(RV_RichTextBox, new Point(MousePosition.X, MousePosition.Y));
+        private void JoinFiles_Click(object sender, EventArgs e) => LoadTextFromMultipleFilePaths(OpenMultipleFilesDialog(J_OpenFileDialog), RV_RichTextBox, ref translatedLines, R_LineCount, R_FileName, R_KeyCount, R_Json);
+
+        private void ClosingProgram(object sender, FormClosingEventArgs e) {
+            if (R_Save.Enabled && !IsOkToLooseChanges) { // Warn about unsaved changes
+                e.Cancel = true;
+            }
+        }
     }
 }

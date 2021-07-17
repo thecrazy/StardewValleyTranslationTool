@@ -48,10 +48,11 @@
             this.PrevLine = new System.Windows.Forms.Button();
             this.TotalLines = new System.Windows.Forms.Label();
             this.LinePosition = new System.Windows.Forms.NumericUpDown();
+            this.SplitFile = new System.Windows.Forms.Button();
+            this.JoinFiles = new System.Windows.Forms.Button();
             this.LH_RichTextBox = new System.Windows.Forms.RichTextBoxSynchronizedScroll();
             this.RH_RichTextBox = new System.Windows.Forms.RichTextBoxSynchronizedScroll();
-            this.button1 = new System.Windows.Forms.Button();
-            this.button2 = new System.Windows.Forms.Button();
+            this.J_OpenFileDialog = new System.Windows.Forms.OpenFileDialog();
             ((System.ComponentModel.ISupportInitialize)(this.SplitContainer1)).BeginInit();
             this.SplitContainer1.Panel1.SuspendLayout();
             this.SplitContainer1.Panel2.SuspendLayout();
@@ -94,6 +95,7 @@
             this.Font.TabIndex = 6;
             this.Font.Text = "Font";
             this.Font.UseVisualStyleBackColor = true;
+            this.Font.Visible = false;
             this.Font.Click += new System.EventHandler(this.Font_Click);
             // 
             // HighlightContext
@@ -187,6 +189,7 @@
             this.L_Json.Size = new System.Drawing.Size(35, 13);
             this.L_Json.TabIndex = 13;
             this.L_Json.Text = "Json: ";
+            this.L_Json.Visible = false;
             // 
             // R_Json
             // 
@@ -197,6 +200,7 @@
             this.R_Json.Size = new System.Drawing.Size(35, 13);
             this.R_Json.TabIndex = 14;
             this.R_Json.Text = "Json: ";
+            this.R_Json.Visible = false;
             // 
             // SplitContainer1
             // 
@@ -242,7 +246,7 @@
             this.RV_RichTextBox.Location = new System.Drawing.Point(0, 0);
             this.RV_RichTextBox.Name = "RV_RichTextBox";
             this.RV_RichTextBox.ReadOnly = true;
-            this.RV_RichTextBox.Size = new System.Drawing.Size(406, 340);
+            this.RV_RichTextBox.Size = new System.Drawing.Size(410, 340);
             this.RV_RichTextBox.TabIndex = 4;
             this.RV_RichTextBox.Text = "";
             this.RV_RichTextBox.WordWrap = false;
@@ -287,6 +291,28 @@
             this.LinePosition.TabIndex = 22;
             this.LinePosition.ValueChanged += new System.EventHandler(this.LinePosition_ValueChanged);
             // 
+            // SplitFile
+            // 
+            this.SplitFile.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.SplitFile.Location = new System.Drawing.Point(392, 188);
+            this.SplitFile.Name = "SplitFile";
+            this.SplitFile.Size = new System.Drawing.Size(95, 23);
+            this.SplitFile.TabIndex = 4;
+            this.SplitFile.Text = "Split File";
+            this.SplitFile.UseVisualStyleBackColor = true;
+            this.SplitFile.Visible = false;
+            // 
+            // JoinFiles
+            // 
+            this.JoinFiles.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.JoinFiles.Location = new System.Drawing.Point(489, 188);
+            this.JoinFiles.Name = "JoinFiles";
+            this.JoinFiles.Size = new System.Drawing.Size(95, 23);
+            this.JoinFiles.TabIndex = 23;
+            this.JoinFiles.Text = "Join Files";
+            this.JoinFiles.UseVisualStyleBackColor = true;
+            this.JoinFiles.Click += new System.EventHandler(this.JoinFiles_Click);
+            // 
             // LH_RichTextBox
             // 
             this.LH_RichTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
@@ -316,33 +342,17 @@
             this.RH_RichTextBox.TextChanged += new System.EventHandler(this.RH_RichTextBox_TextChanged);
             this.RH_RichTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.RH_RichTextBox_KeyDown);
             // 
-            // button1
+            // J_OpenFileDialog
             // 
-            this.button1.Anchor = System.Windows.Forms.AnchorStyles.Top;
-            this.button1.Location = new System.Drawing.Point(392, 188);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(95, 23);
-            this.button1.TabIndex = 4;
-            this.button1.Text = "Split File";
-            this.button1.UseVisualStyleBackColor = true;
-            // 
-            // button2
-            // 
-            this.button2.Anchor = System.Windows.Forms.AnchorStyles.Top;
-            this.button2.Location = new System.Drawing.Point(489, 188);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(95, 23);
-            this.button2.TabIndex = 23;
-            this.button2.Text = "Join Files";
-            this.button2.UseVisualStyleBackColor = true;
+            this.J_OpenFileDialog.FileName = "openFileDialog1";
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(784, 561);
-            this.Controls.Add(this.button2);
-            this.Controls.Add(this.button1);
+            this.Controls.Add(this.JoinFiles);
+            this.Controls.Add(this.SplitFile);
             this.Controls.Add(this.LinePosition);
             this.Controls.Add(this.TotalLines);
             this.Controls.Add(this.PrevLine);
@@ -366,6 +376,7 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
             this.Text = "Title";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ClosingProgram);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.SplitContainer1.Panel1.ResumeLayout(false);
             this.SplitContainer1.Panel2.ResumeLayout(false);
@@ -405,8 +416,9 @@
         private System.Windows.Forms.Button PrevLine;
         private System.Windows.Forms.Label TotalLines;
         private System.Windows.Forms.NumericUpDown LinePosition;
-        private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.Button SplitFile;
+        private System.Windows.Forms.Button JoinFiles;
+        private System.Windows.Forms.OpenFileDialog J_OpenFileDialog;
     }
 }
 
