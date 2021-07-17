@@ -3,7 +3,7 @@ A tool to help validate translations of i18n files for Stardew Valley Mods.
 
 NOTES:<br>
 
-Developped in .Net for Windows, you will need the .Net framework installed to run this.<br>
+Developped in .Net for Windows. You need the .Net framework installed to run this.<br>
 
 Json validation is currently disabled as it needs more work. Use https://smapi.io/json with the i18n option instead.<br>
 
