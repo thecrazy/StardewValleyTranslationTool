@@ -1,6 +1,8 @@
 # StardewValleyTranslationTool
 A tool to help validate translations of i18n files for Stardew Valley Mods.
 
+![plot](./screenshot.png)
+
 NOTES:<br>
 
 Developped in .Net for Windows. You need the .Net framework installed to run this.<br>
