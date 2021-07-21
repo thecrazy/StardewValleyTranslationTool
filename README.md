@@ -1,7 +1,7 @@
 # StardewValleyTranslationTool
 A tool to help validate translations of i18n files for Stardew Valley Mods.
 
-![Screenshot](screenshot.png)
+![Screenshot](https://user-images.githubusercontent.com/2411956/126434670-a6acffdd-37e7-4c5a-ab38-bdfb3f986b0c.png)
 
 NOTES:<br>
 
