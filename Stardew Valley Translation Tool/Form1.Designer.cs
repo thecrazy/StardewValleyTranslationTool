@@ -42,17 +42,18 @@
             this.L_Json = new System.Windows.Forms.Label();
             this.R_Json = new System.Windows.Forms.Label();
             this.SplitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.LV_RichTextBox = new System.Windows.Forms.RichTextBoxSynchronizedScroll();
-            this.RV_RichTextBox = new System.Windows.Forms.RichTextBoxSynchronizedScroll();
             this.NextLine = new System.Windows.Forms.Button();
             this.PrevLine = new System.Windows.Forms.Button();
             this.TotalLines = new System.Windows.Forms.Label();
             this.LinePosition = new System.Windows.Forms.NumericUpDown();
             this.SplitFile = new System.Windows.Forms.Button();
             this.JoinFiles = new System.Windows.Forms.Button();
+            this.J_OpenFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.button1 = new System.Windows.Forms.Button();
             this.LH_RichTextBox = new System.Windows.Forms.RichTextBoxSynchronizedScroll();
             this.RH_RichTextBox = new System.Windows.Forms.RichTextBoxSynchronizedScroll();
-            this.J_OpenFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.LV_RichTextBox = new System.Windows.Forms.RichTextBoxSynchronizedScroll();
+            this.RV_RichTextBox = new System.Windows.Forms.RichTextBoxSynchronizedScroll();
             ((System.ComponentModel.ISupportInitialize)(this.SplitContainer1)).BeginInit();
             this.SplitContainer1.Panel1.SuspendLayout();
             this.SplitContainer1.Panel2.SuspendLayout();
@@ -222,36 +223,6 @@
             this.SplitContainer1.SplitterWidth = 2;
             this.SplitContainer1.TabIndex = 15;
             // 
-            // LV_RichTextBox
-            // 
-            this.LV_RichTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.LV_RichTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LV_RichTextBox.Location = new System.Drawing.Point(3, 0);
-            this.LV_RichTextBox.Name = "LV_RichTextBox";
-            this.LV_RichTextBox.ReadOnly = true;
-            this.LV_RichTextBox.Size = new System.Drawing.Size(386, 340);
-            this.LV_RichTextBox.TabIndex = 3;
-            this.LV_RichTextBox.Text = "";
-            this.LV_RichTextBox.WordWrap = false;
-            this.LV_RichTextBox.Click += new System.EventHandler(this.LV_RichTextBox_Click);
-            // 
-            // RV_RichTextBox
-            // 
-            this.RV_RichTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.RV_RichTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.RV_RichTextBox.Location = new System.Drawing.Point(0, 0);
-            this.RV_RichTextBox.Name = "RV_RichTextBox";
-            this.RV_RichTextBox.ReadOnly = true;
-            this.RV_RichTextBox.Size = new System.Drawing.Size(410, 340);
-            this.RV_RichTextBox.TabIndex = 4;
-            this.RV_RichTextBox.Text = "";
-            this.RV_RichTextBox.WordWrap = false;
-            this.RV_RichTextBox.Click += new System.EventHandler(this.RV_RichTextBox_Click);
-            // 
             // NextLine
             // 
             this.NextLine.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -289,7 +260,9 @@
             this.LinePosition.Name = "LinePosition";
             this.LinePosition.Size = new System.Drawing.Size(64, 20);
             this.LinePosition.TabIndex = 22;
-            this.LinePosition.ValueChanged += new System.EventHandler(this.LinePosition_ValueChanged);
+            this.LinePosition.Enter += new System.EventHandler(this.LinePosition_EnterFocus);
+            this.LinePosition.KeyDown += new System.Windows.Forms.KeyEventHandler(this.LinePosition_KeyDown);
+            this.LinePosition.Leave += new System.EventHandler(this.LinePosition_LeaveFocus);
             // 
             // SplitFile
             // 
@@ -312,6 +285,21 @@
             this.JoinFiles.Text = "Join Files";
             this.JoinFiles.UseVisualStyleBackColor = true;
             this.JoinFiles.Click += new System.EventHandler(this.JoinFiles_Click);
+            // 
+            // J_OpenFileDialog
+            // 
+            this.J_OpenFileDialog.FileName = "openFileDialog1";
+            // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(196, 41);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.TabIndex = 24;
+            this.button1.Text = "Test";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Visible = false;
+            this.button1.Click += new System.EventHandler(this.TestButton_Click);
             // 
             // LH_RichTextBox
             // 
@@ -342,15 +330,42 @@
             this.RH_RichTextBox.TextChanged += new System.EventHandler(this.RH_RichTextBox_TextChanged);
             this.RH_RichTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.RH_RichTextBox_KeyDown);
             // 
-            // J_OpenFileDialog
+            // LV_RichTextBox
             // 
-            this.J_OpenFileDialog.FileName = "openFileDialog1";
+            this.LV_RichTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.LV_RichTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LV_RichTextBox.Location = new System.Drawing.Point(3, 0);
+            this.LV_RichTextBox.Name = "LV_RichTextBox";
+            this.LV_RichTextBox.ReadOnly = true;
+            this.LV_RichTextBox.Size = new System.Drawing.Size(386, 340);
+            this.LV_RichTextBox.TabIndex = 3;
+            this.LV_RichTextBox.Text = "";
+            this.LV_RichTextBox.WordWrap = false;
+            this.LV_RichTextBox.Click += new System.EventHandler(this.LV_RichTextBox_Click);
+            // 
+            // RV_RichTextBox
+            // 
+            this.RV_RichTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.RV_RichTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.RV_RichTextBox.Location = new System.Drawing.Point(0, 0);
+            this.RV_RichTextBox.Name = "RV_RichTextBox";
+            this.RV_RichTextBox.ReadOnly = true;
+            this.RV_RichTextBox.Size = new System.Drawing.Size(422, 340);
+            this.RV_RichTextBox.TabIndex = 4;
+            this.RV_RichTextBox.Text = "";
+            this.RV_RichTextBox.WordWrap = false;
+            this.RV_RichTextBox.Click += new System.EventHandler(this.RV_RichTextBox_Click);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(784, 561);
+            this.Controls.Add(this.button1);
             this.Controls.Add(this.JoinFiles);
             this.Controls.Add(this.SplitFile);
             this.Controls.Add(this.LinePosition);
@@ -419,6 +434,7 @@
         private System.Windows.Forms.Button SplitFile;
         private System.Windows.Forms.Button JoinFiles;
         private System.Windows.Forms.OpenFileDialog J_OpenFileDialog;
+        private System.Windows.Forms.Button button1;
     }
 }
 
